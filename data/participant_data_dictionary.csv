@@ -1,0 +1,50 @@
+column_name,description,value_type,possible_values,notes
+participant_id,Unique anonymous participant identifier,string,P-YYYYMMDD-HHMMSS-RANDOM4,Generated automatically and stored locally
+study_start_time,Study start date and time,ISO 8601 datetime,ISO 8601,Recorded when Begin Study is selected
+study_end_time,Study completion date and time,ISO 8601 datetime,ISO 8601,Recorded after the final questionnaire
+timestamp,Timestamp associated with this row,ISO 8601 datetime,ISO 8601,Trial submission or section timestamp
+record_type,Type of exported record,categorical,demographics | trial | final_questionnaire,Identifies how to interpret the row
+phase,Experimental phase,categorical,Phase A | Phase B,Blank for non-trial rows
+trial_number,Trial position within the phase,integer,1-4 or 1-16,Uses the randomized presentation position
+condition_id,Combined HR and HRV condition,categorical,H1_V1 through H4_V4,Blank for non-trial rows
+hr_state,Simulated HR activation code,categorical,H1 | H2 | H3 | H4,No real physiological data
+hrv_state,Simulated HRV stability code,categorical,V1 | V2 | V3 | V4,No real physiological data
+randomized_order,Full randomized condition order,string,Pipe-delimited condition IDs,Allows reconstruction of presentation order
+stimulus_start_time,Time the animated stimulus appeared,ISO 8601 datetime,ISO 8601,Trial rows only
+response_start_time,Time the response screen appeared,ISO 8601 datetime,ISO 8601,Trial rows only
+response_submit_time,Time the trial response was submitted,ISO 8601 datetime,ISO 8601,Trial rows only
+response_time_ms,Time spent on the response screen,integer,Milliseconds,Trial rows only
+age_range,Participant age category,categorical,Under 18 | 18–24 | 25–34 | 35–44 | 45–54 | 55+ | Prefer not to say,Demographics row only
+gaming_experience,Self-reported gaming experience,categorical,None | Casual | Regular | Frequent | Expert / competitive,Demographics row only
+wearable_experience,Experience with wearable health data,categorical,None | Rarely | Sometimes | Often | Very often,Demographics row only
+hr_hrv_familiarity,Familiarity with HR or HRV,categorical,Not familiar | Slightly familiar | Moderately familiar | Very familiar,Demographics row only
+visual_accessibility,Self-reported visual accessibility category,categorical,No known issue | Color vision difficulty | Motion sensitivity | Low vision | Other / prefer not to say,Demographics row only
+device_type,Device category used for the study,categorical,Desktop / laptop | Tablet | Phone,Demographics row only
+phaseA_free_text_interpretation,Unaided interpretation of the icon,string,Free text,Phase A trial rows only
+phaseA_confidence,Confidence in unaided interpretation,integer,1-7,Higher means more confident
+phaseA_best_match,Selected unaided state match,categorical,Stable / calm | Focused / engaged | High activation | Unstable / overloaded | Not sure,Phase A trial rows only
+phaseA_perceived_activation,Perceived activation rating,integer,1-7,Higher means more activated
+phaseA_perceived_stability,Perceived stability or coherence rating,integer,1-7,Higher means more stable
+phaseB_hr_recognition,Recognized simulated HR state,categorical,H1 | H2 | H3 | H4,Stored with the full option label
+phaseB_hrv_recognition,Recognized simulated HRV state,categorical,V1 | V2 | V3 | V4,Stored with the full option label
+phaseB_clarity,Participant rating of icon clarity,integer,1-7,Higher means clearer
+phaseB_urgency,Participant rating of icon urgency,integer,1-7,Higher means more urgent
+phaseB_stability,Participant rating of icon stability,integer,1-7,Higher means more stable
+phaseB_coordination_usefulness,Perceived usefulness for teammate coordination,integer,1-7,Higher means more helpful
+phaseB_support_intention,Intention to check on or support teammate,integer,1-7,Higher means stronger intention
+phaseB_sam_valence,SAM-style pleasantness rating,integer,1-7,Higher means more pleasant
+phaseB_sam_arousal,SAM-style calm-to-activated rating,integer,1-7,Higher means more activated
+phaseB_sam_dominance,SAM-style perceived control rating,integer,1-7,Higher means more in control
+final_feature_helped_most,Visual feature reported as most helpful,string,Free text,Final questionnaire row only
+final_confusing_states,Icon states reported as confusing,string,Free text,Final questionnaire row only
+final_useful_or_invasive,Reflection on usefulness or invasiveness,string,Free text,Final questionnaire row only
+final_would_use_in_game,Preference for using the interface in a game,string,Free text,Final questionnaire row only
+final_improvement_suggestion,Suggested icon design improvements,string,Free text,Final questionnaire row only
+nasa_mental_demand,Short NASA-TLX mental-demand rating,integer,1-7,Higher means greater demand
+nasa_effort,Short NASA-TLX effort rating,integer,1-7,Higher means greater effort
+nasa_frustration,Short NASA-TLX frustration rating,integer,1-7,Higher means greater frustration
+nasa_confidence,Overall response confidence,integer,1-7,Higher means more confident
+visual_comfort,Comfort with the animations,integer,1-7,Higher means more comfortable
+user_agent,Browser-provided device and browser string,string,Navigator userAgent,Recorded without sensor access
+screen_width,Reported screen width,integer,Pixels,From window.screen
+screen_height,Reported screen height,integer,Pixels,From window.screen

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#071016">
+  <title>Simulated Biofeedback Icon Validation Study</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#study-content">Skip to study content</a>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+  <header class="site-header">
+    <div class="brand" aria-label="Simulated Biofeedback Icon Validation Study">
+      <span class="brand-mark" aria-hidden="true"><i></i></span>
+      <span>SBIV <b>Study</b></span>
+    </div>
+    <div class="participant-chip" id="participant-chip" hidden>
+      <span class="status-dot" aria-hidden="true"></span>
+      <span id="participant-chip-text"></span>
+    </div>
+  </header>
+
+  <main id="study-content" class="study-shell" tabindex="-1">
+    <section id="progress-region" class="progress-region" aria-label="Study progress" hidden>
+      <div class="progress-copy">
+        <span id="progress-label">Study progress</span>
+        <span id="progress-percent">0%</span>
+      </div>
+      <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div id="progress-fill" class="progress-fill"></div>
+      </div>
+    </section>
+
+    <section id="app" class="experiment-card" aria-live="polite" aria-busy="false"></section>
+  </main>
+
+  <footer class="site-footer">
+    <span>SIMULATED SIGNALS ONLY</span>
+    <span aria-hidden="true">•</span>
+    <span>NO HEALTH DATA COLLECTED</span>
+  </footer>
+
+  <noscript>
+    <div class="noscript">This study requires JavaScript. Please enable it and reload the page.</div>
+  </noscript>
+  <script src="app.js"></script>
+</body>
+</html>
