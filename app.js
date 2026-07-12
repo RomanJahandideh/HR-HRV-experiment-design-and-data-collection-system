@@ -31,7 +31,6 @@ const DATA_COLUMNS = [
   "final_feature_helped_most", "final_confusing_states", "final_useful_or_invasive", "final_would_use_in_game", "final_improvement_suggestion", "nasa_mental_demand", "nasa_effort", "nasa_frustration", "nasa_confidence", "visual_comfort",
   "user_agent", "screen_width", "screen_height"
 ];
-const STORAGE_KEY = "sbiv-study-state-v1";
 const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxc4aRVR4C7JcPxaNC8PQo33gx0RZKsXBNCI5xKkThgACZZ_AR98Hk-mO_jLKUq6Zvh2w/exec";
 const CURRENT_CONSENT_VERSION = 2;
 // Temporary testing switch. Change to false before collecting real participant data.
@@ -67,20 +66,7 @@ function createInitialState() {
 }
 
 function initStudy() {
-  const saved = loadProgress();
-  if (saved) studyState = { ...createInitialState(), ...saved, deviceInfo: saved.deviceInfo || getDeviceInfo() };
-  if (studyState.onlineSubmission?.status === "sending") studyState.onlineSubmission.status = "not_submitted";
-  if (studyState.participantId) updateParticipantChip();
-  // Timed trials restart safely after a refresh; completed responses are never lost.
-  if (["fixation", "stimulus", "questions"].includes(studyState.currentPage)) {
-    studyState.currentPage = studyState.activeTrial?.phase === "A" ? "phaseA" : "phaseB";
-    studyState.activeTrial = null;
-  }
-  if (studyState.participantId && !["landing", "consent"].includes(studyState.currentPage) && studyState.consentVersion !== CURRENT_CONSENT_VERSION) {
-    studyState.resumeAfterConsent = studyState.currentPage;
-    studyState.currentPage = "consent";
-    studyState.consent = false;
-  }
+  studyState = createInitialState();
   renderPage();
 }
 
@@ -132,7 +118,6 @@ function renderPage() {
 
 function setPage(page) {
   studyState.currentPage = page;
-  saveProgress();
   renderPage();
 }
 
@@ -259,7 +244,6 @@ function runTrial(phase, index, conditionId) {
     responseStartTime: ""
   };
   studyState.activeTrial = activeTrial;
-  saveProgress();
   showFixation(phase, index, condition);
 }
 
@@ -271,7 +255,6 @@ function showFixation(phase, index, condition) {
 
 function showStimulus(phase, index, condition) {
   studyState.activeTrial.stimulusStartTime = new Date().toISOString();
-  saveProgress();
   app.innerHTML = `<div class="page trial-stage"><div class="trial-status">Phase ${phase}, Trial ${index + 1} of ${phase === "A" ? 4 : 16} · Observe</div><div><div id="trial-avatar"></div><p class="stimulus-copy">Observe the interface signal</p><div class="timer-track" aria-hidden="true"><div class="timer-fill"></div></div></div></div>`;
   renderAvatarIcon(condition, document.getElementById("trial-avatar"));
   timers.push(setTimeout(() => showQuestions(phase, index, condition), 6000));
@@ -280,7 +263,6 @@ function showStimulus(phase, index, condition) {
 function showQuestions(phase, index, condition) {
   app.setAttribute("aria-busy", "false");
   studyState.activeTrial.responseStartTime = new Date().toISOString();
-  saveProgress();
   const title = phase === "A" ? "Describe what you perceived" : "Identify and rate the signal";
   app.innerHTML = `<div class="page question-layout"><aside class="question-stimulus" aria-label="Observed icon, paused"><div id="question-avatar"></div><p>OBSERVED SIGNAL · PAUSED</p></aside><form id="trial-form" class="question-form"><p class="eyebrow">Phase ${phase}, Trial ${index + 1} of ${phase === "A" ? 4 : 16}</p><h2>${title}</h2><div class="questions">${phase === "A" ? phaseAQuestions() : phaseBQuestions()}</div><p class="validation-note" id="trial-error" role="alert"></p><div class="page-actions"><button class="btn btn-primary" type="submit">Next <span class="arrow" aria-hidden="true">→</span></button></div></form></div>`;
   renderAvatarIcon(condition, document.getElementById("question-avatar"), "small paused");
@@ -351,7 +333,6 @@ function collectAnswers(phase, index, condition, formElement) {
     else studyState.currentPage = studyState.phaseBIndex >= 16 ? "final" : "phaseB";
   }
   studyState.activeTrial = null;
-  saveProgress();
   renderPage();
 }
 
@@ -419,7 +400,6 @@ function renderResultsPage() {
   const ready = isExportReady();
   const rows = buildFlatDataRows();
   studyState.exportRows = rows;
-  saveProgress();
   app.innerHTML = `<div class="page results-page"><div class="success-icon" aria-hidden="true">✓</div><p class="eyebrow" style="justify-content:center">Study complete</p><h2>Thank you for participating.</h2><p class="body-copy" style="margin-inline:auto">Your responses are submitted to the researcher automatically. Downloading a backup copy is still recommended.</p><div class="results-id">${escapeHTML(studyState.participantId)}</div><div class="results-stats"><div class="stat"><strong>${completed}</strong><span>Trials completed</span></div><div class="stat"><strong>${rows.length}</strong><span>Rows ready</span></div></div><div class="submission-panel" id="submission-panel" role="status" aria-live="polite">${onlineSubmissionMarkup()}</div><div class="data-preview"><h3>Export preview</h3><table><tbody><tr><th>Participant ID</th><td>${escapeHTML(studyState.participantId)}</td></tr><tr><th>Phase A trials completed</th><td>${studyState.phaseA.length} / 4</td></tr><tr><th>Phase B trials completed</th><td>${studyState.phaseB.length} / 16</td></tr><tr><th>Final questionnaire completed</th><td>${Object.keys(studyState.finalQuestionnaire).length ? "Yes" : "No"}</td></tr><tr><th>Total rows ready for export</th><td>${rows.length}</td></tr></tbody></table></div>${ready ? "" : '<p class="export-warning" role="alert">Some study data is incomplete. Please complete the study before exporting.</p>'}<p class="copy-status" id="copy-status" role="status"></p><div class="page-actions"><button class="btn" id="export-csv" ${ready ? "" : "disabled"}>Export CSV</button><button class="btn" id="export-excel" ${ready ? "" : "disabled"}>Export Excel-Compatible File</button><button class="btn" id="export-json" ${ready ? "" : "disabled"}>Export JSON</button><button class="btn" id="copy-id">Copy Participant ID</button><button class="btn btn-danger" id="restart-study">Restart Study</button></div></div>`;
   document.getElementById("export-csv").addEventListener("click", () => downloadCSV(rows, participantFilename("csv")));
   document.getElementById("export-excel").addEventListener("click", () => downloadExcelCompatibleFile(studyState));
@@ -531,21 +511,6 @@ function getCondition(id) { return CONDITIONS.find(condition => condition.id ===
 function getDeviceInfo() { return { userAgent: navigator.userAgent, screenWidth: window.screen.width, screenHeight: window.screen.height }; }
 function clearTimers() { timers.forEach(clearTimeout); timers = []; }
 
-function saveProgress() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(studyState)); }
-  catch (error) { console.warn("Study progress could not be saved locally.", error); }
-}
-
-function loadProgress() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (error) {
-    console.warn("Saved study progress could not be loaded.", error);
-    return null;
-  }
-}
-
 function buildFlatDataRows() {
   const blankRow = () => Object.fromEntries(DATA_COLUMNS.map(column => [column, ""]));
   const common = () => ({
@@ -656,7 +621,6 @@ async function submitStudyDataOnline(forceRepeat = false) {
   if (submission.status === "sending") return;
   if (submission.status === "sent" && !(forceRepeat && ALLOW_REPEAT_SUBMISSIONS_FOR_TESTING)) return;
   studyState.onlineSubmission = { status: "sending", submittedAt: "", error: "" };
-  saveProgress();
   updateOnlineSubmissionPanel();
   try {
     // The temporary test key bypasses server deduplication while exported row IDs remain unchanged.
@@ -674,7 +638,6 @@ async function submitStudyDataOnline(forceRepeat = false) {
   } catch (error) {
     studyState.onlineSubmission = { status: "failed", submittedAt: "", error: String(error?.message || "Network request failed") };
   }
-  saveProgress();
   updateOnlineSubmissionPanel();
 }
 
@@ -737,9 +700,8 @@ function downloadFile(filename, content, type) {
 }
 
 function restartStudy() {
-  if (!window.confirm("Restart the study? This will permanently clear all saved responses on this device.")) return;
+  if (!window.confirm("Restart the study? This will permanently clear all responses on this device.")) return;
   clearTimers();
-  localStorage.removeItem(STORAGE_KEY);
   studyState = createInitialState();
   document.getElementById("participant-chip").hidden = true;
   renderPage();

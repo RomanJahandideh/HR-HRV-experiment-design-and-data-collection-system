@@ -38,7 +38,7 @@ At the end of the experiment, ask each participant to export CSV, JSON, or both 
 
 The CSV uses one row per trial, repeats demographics and final responses for convenient analysis, and includes timing, order, condition, device, and answer fields. It opens in Excel and Google Sheets and imports into R, Python, or SPSS. The JSON preserves the nested study structure.
 
-Progress is backed up in browser `localStorage` after every page and trial. It remains available after refresh until **Restart Study** is confirmed.
+Reloading the page always starts a fresh study session; progress is not saved across reloads.
 
 ## Data Collection and Excel Export
 
@@ -51,6 +51,8 @@ Participants can also export their own CSV, Excel-compatible `.xls`, or JSON fil
 The `data` folder contains a header-only template, a complete data dictionary, and collection guidance. CSV files use a consistent 22-row structure per completed participant and UTF-8 formatting for Excel, Google Sheets, SPSS, R, and Python. The Excel-compatible export presents Participant Summary, Demographics, Phase A Trial Data, Phase B Trial Data, and Final Questionnaire as clearly labeled tables.
 
 GitHub Pages cannot save files server-side by itself. This project uses the configured Google Apps Script endpoint as its external collection service; it does not contain a server or database. In a supervised lab study, the researcher can also move downloaded participant files into the `data` folder manually.
+
+See [`google-apps-script/README.md`](google-apps-script/README.md) for the one-time steps to deploy the collection backend (a Google Sheet + `Code.gs` Web App) and for how to download the accumulated data as a real `.xlsx` file at any time.
 
 ## Modify visual mappings
 
