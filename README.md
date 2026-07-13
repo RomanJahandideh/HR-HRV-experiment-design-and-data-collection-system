@@ -38,7 +38,7 @@ At the end of the experiment, ask each participant to export CSV, JSON, or both 
 
 The CSV uses one row per trial, repeats demographics and final responses for convenient analysis, and includes timing, order, condition, device, and answer fields. It opens in Excel and Google Sheets and imports into R, Python, or SPSS. The JSON preserves the nested study structure.
 
-Reloading the page always starts a fresh study session; progress is not saved across reloads.
+Progress is saved to the browser's local storage as the participant advances, so an accidental reload resumes the same session instead of losing responses.
 
 ## Data Collection and Excel Export
 

@@ -28,7 +28,7 @@ live site.
    screen (**Advanced → Go to \[project name] (unsafe)** is expected for a
    script you just wrote yourself; it isn't a warning about a third party).
 7. Copy the **Web app URL** shown after deployment (it ends in `/exec`).
-8. Paste that URL into `app.js` as the value of `GOOGLE_APPS_SCRIPT_URL`
+8. Paste that URL into `app.js` as the value of `GOOGLE_SCRIPT_URL`
    (currently near the top of the file), replacing the existing value.
 
 ## Verifying it works
@@ -48,7 +48,7 @@ live site.
 Apps Script Web App URLs stay the same across **Manage deployments → Edit →
 Deploy** as long as you edit the existing deployment rather than creating a
 new one. If you ever create a brand new deployment instead, you'll get a new
-URL and will need to update `GOOGLE_APPS_SCRIPT_URL` in `app.js` again.
+URL and will need to update `GOOGLE_SCRIPT_URL` in `app.js` again.
 
 ## Getting the Excel file
 

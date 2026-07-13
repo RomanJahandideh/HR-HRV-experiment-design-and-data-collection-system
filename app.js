@@ -31,7 +31,12 @@ const DATA_COLUMNS = [
   "final_feature_helped_most", "final_confusing_states", "final_useful_or_invasive", "final_would_use_in_game", "final_improvement_suggestion", "nasa_mental_demand", "nasa_effort", "nasa_frustration", "nasa_confidence", "visual_comfort",
   "user_agent", "screen_width", "screen_height"
 ];
-const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxc4aRVR4C7JcPxaNC8PQo33gx0RZKsXBNCI5xKkThgACZZ_AR98Hk-mO_jLKUq6Zvh2w/exec";
+const STORAGE_KEY = "sbiv-study-state-v1";
+// Paste the Apps Script Web App "exec" URL here. See GOOGLE_SHEETS_SETUP.md for full setup steps.
+// IMPORTANT: every time the Apps Script project is edited, it must be redeployed (Deploy > Manage deployments > Edit > New version)
+// or this URL keeps running the old code.
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxc4aRVR4C7JcPxaNC8PQo33gx0RZKsXBNCI5xKkThgACZZ_AR98Hk-mO_jLKUq6Zvh2w/exec";
+const GOOGLE_SCRIPT_PLACEHOLDER = "PASTE_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 const CURRENT_CONSENT_VERSION = 2;
 // Temporary testing switch. Change to false before collecting real participant data.
 const ALLOW_REPEAT_SUBMISSIONS_FOR_TESTING = true;
@@ -65,7 +70,9 @@ function createInitialState() {
   };
 }
 
+// Every refresh starts a brand-new attempt at the landing page; nothing resumes from localStorage.
 function initStudy() {
+  localStorage.removeItem(STORAGE_KEY);
   studyState = createInitialState();
   renderPage();
 }
@@ -118,18 +125,30 @@ function renderPage() {
 
 function setPage(page) {
   studyState.currentPage = page;
+  saveProgress();
   renderPage();
 }
 
 function renderLandingPage() {
   app.innerHTML = `
-    <div class="page landing">
-      <p class="eyebrow">Interface perception experiment</p>
-      <h1>Simulated Biofeedback Icon Validation Study</h1>
-      <p class="subtitle">An online study of animated avatar icons for simulated HR and HRV interface states.</p>
-      <p class="body-copy">This study evaluates how people interpret animated teammate-status icons. You will view short animated icons and answer questions about their clarity, perceived activation, stability, and usefulness for coordination.</p>
-      <div class="meta-row" aria-label="Study details"><span class="meta-pill">15–20 minutes</span><span class="meta-pill">20 icon trials</span><span class="meta-pill">No sensors</span><span class="meta-pill">Simulated states only</span></div>
-      <div class="page-actions start"><button class="btn btn-primary" id="begin-study">Begin Study <span class="arrow" aria-hidden="true">→</span></button></div>
+    <div class="page">
+      <header class="thesis-header">
+        <img src="assets/sfu-logo.png" alt="Simon Fraser University" class="thesis-logo">
+        <div class="thesis-meta">
+          <p class="thesis-kicker">Master's Thesis Research Study</p>
+          <p class="thesis-title">Physiological Legibility in Multiplayer Games: An STS Perspective on Visualizing Biosignals for Cooperative Play</p>
+          <p class="thesis-byline">Roman Jahandideh &middot; School of Interactive Arts &amp; Technology, Simon Fraser University</p>
+          <p class="thesis-advisor">Senior Supervisor: Prof. Steve DiPaola</p>
+        </div>
+      </header>
+      <div class="landing">
+        <p class="eyebrow">Interface perception experiment</p>
+        <h1>Simulated Biofeedback Icon Validation Study</h1>
+        <p class="subtitle">An online study of animated avatar icons for simulated HR and HRV interface states.</p>
+        <p class="body-copy">This study evaluates how people interpret animated teammate-status icons. You will view short animated icons and answer questions about their clarity, perceived activation, stability, and usefulness for coordination.</p>
+        <div class="meta-row" aria-label="Study details"><span class="meta-pill">15–20 minutes</span><span class="meta-pill">20 icon trials</span><span class="meta-pill">No sensors</span><span class="meta-pill">Simulated states only</span></div>
+        <div class="page-actions start"><button class="btn btn-primary" id="begin-study">Begin Study <span class="arrow" aria-hidden="true">→</span></button></div>
+      </div>
     </div>`;
   document.getElementById("begin-study").addEventListener("click", () => {
     if (!studyState.participantId) {
@@ -244,6 +263,7 @@ function runTrial(phase, index, conditionId) {
     responseStartTime: ""
   };
   studyState.activeTrial = activeTrial;
+  saveProgress();
   showFixation(phase, index, condition);
 }
 
@@ -255,6 +275,7 @@ function showFixation(phase, index, condition) {
 
 function showStimulus(phase, index, condition) {
   studyState.activeTrial.stimulusStartTime = new Date().toISOString();
+  saveProgress();
   app.innerHTML = `<div class="page trial-stage"><div class="trial-status">Phase ${phase}, Trial ${index + 1} of ${phase === "A" ? 4 : 16} · Observe</div><div><div id="trial-avatar"></div><p class="stimulus-copy">Observe the interface signal</p><div class="timer-track" aria-hidden="true"><div class="timer-fill"></div></div></div></div>`;
   renderAvatarIcon(condition, document.getElementById("trial-avatar"));
   timers.push(setTimeout(() => showQuestions(phase, index, condition), 6000));
@@ -263,6 +284,7 @@ function showStimulus(phase, index, condition) {
 function showQuestions(phase, index, condition) {
   app.setAttribute("aria-busy", "false");
   studyState.activeTrial.responseStartTime = new Date().toISOString();
+  saveProgress();
   const title = phase === "A" ? "Describe what you perceived" : "Identify and rate the signal";
   app.innerHTML = `<div class="page question-layout"><aside class="question-stimulus" aria-label="Observed icon, paused"><div id="question-avatar"></div><p>OBSERVED SIGNAL · PAUSED</p></aside><form id="trial-form" class="question-form"><p class="eyebrow">Phase ${phase}, Trial ${index + 1} of ${phase === "A" ? 4 : 16}</p><h2>${title}</h2><div class="questions">${phase === "A" ? phaseAQuestions() : phaseBQuestions()}</div><p class="validation-note" id="trial-error" role="alert"></p><div class="page-actions"><button class="btn btn-primary" type="submit">Next <span class="arrow" aria-hidden="true">→</span></button></div></form></div>`;
   renderAvatarIcon(condition, document.getElementById("question-avatar"), "small paused");
@@ -333,6 +355,7 @@ function collectAnswers(phase, index, condition, formElement) {
     else studyState.currentPage = studyState.phaseBIndex >= 16 ? "final" : "phaseB";
   }
   studyState.activeTrial = null;
+  saveProgress();
   renderPage();
 }
 
@@ -400,14 +423,41 @@ function renderResultsPage() {
   const ready = isExportReady();
   const rows = buildFlatDataRows();
   studyState.exportRows = rows;
-  app.innerHTML = `<div class="page results-page"><div class="success-icon" aria-hidden="true">✓</div><p class="eyebrow" style="justify-content:center">Study complete</p><h2>Thank you for participating.</h2><p class="body-copy" style="margin-inline:auto">Your responses are submitted to the researcher automatically. Downloading a backup copy is still recommended.</p><div class="results-id">${escapeHTML(studyState.participantId)}</div><div class="results-stats"><div class="stat"><strong>${completed}</strong><span>Trials completed</span></div><div class="stat"><strong>${rows.length}</strong><span>Rows ready</span></div></div><div class="submission-panel" id="submission-panel" role="status" aria-live="polite">${onlineSubmissionMarkup()}</div><div class="data-preview"><h3>Export preview</h3><table><tbody><tr><th>Participant ID</th><td>${escapeHTML(studyState.participantId)}</td></tr><tr><th>Phase A trials completed</th><td>${studyState.phaseA.length} / 4</td></tr><tr><th>Phase B trials completed</th><td>${studyState.phaseB.length} / 16</td></tr><tr><th>Final questionnaire completed</th><td>${Object.keys(studyState.finalQuestionnaire).length ? "Yes" : "No"}</td></tr><tr><th>Total rows ready for export</th><td>${rows.length}</td></tr></tbody></table></div>${ready ? "" : '<p class="export-warning" role="alert">Some study data is incomplete. Please complete the study before exporting.</p>'}<p class="copy-status" id="copy-status" role="status"></p><div class="page-actions"><button class="btn" id="export-csv" ${ready ? "" : "disabled"}>Export CSV</button><button class="btn" id="export-excel" ${ready ? "" : "disabled"}>Export Excel-Compatible File</button><button class="btn" id="export-json" ${ready ? "" : "disabled"}>Export JSON</button><button class="btn" id="copy-id">Copy Participant ID</button><button class="btn btn-danger" id="restart-study">Restart Study</button></div></div>`;
+  saveProgress();
+  app.innerHTML = `<div class="page results-page"><div class="success-icon" aria-hidden="true">✓</div><p class="eyebrow" style="justify-content:center">Study complete</p><h2>Thank you for participating.</h2><p class="body-copy" style="margin-inline:auto">Your responses are submitted to the researcher automatically. Downloading a backup copy is still recommended.</p><div class="results-id">${escapeHTML(studyState.participantId)}</div><div class="results-stats"><div class="stat"><strong>${completed}</strong><span>Trials completed</span></div><div class="stat"><strong>${rows.length}</strong><span>Rows ready</span></div></div><div class="submission-panel" id="submission-panel" role="status" aria-live="polite">${onlineSubmissionMarkup()}</div><div class="data-preview"><h3>Export preview</h3><table><tbody><tr><th>Participant ID</th><td>${escapeHTML(studyState.participantId)}</td></tr><tr><th>Phase A trials completed</th><td>${studyState.phaseA.length} / 4</td></tr><tr><th>Phase B trials completed</th><td>${studyState.phaseB.length} / 16</td></tr><tr><th>Final questionnaire completed</th><td>${Object.keys(studyState.finalQuestionnaire).length ? "Yes" : "No"}</td></tr><tr><th>Total rows ready for export</th><td>${rows.length}</td></tr></tbody></table></div>${ready ? "" : '<p class="export-warning" role="alert">Some study data is incomplete. Please complete the study before exporting.</p>'}<p class="copy-status" id="copy-status" role="status"></p><div class="page-actions"><button class="btn" id="export-csv" ${ready ? "" : "disabled"}>Export CSV</button><button class="btn" id="export-excel" ${ready ? "" : "disabled"}>Export Excel-Compatible File</button><button class="btn" id="export-json" ${ready ? "" : "disabled"}>Export JSON</button><button class="btn" id="copy-id">Copy Participant ID</button><button class="btn btn-danger" id="restart-study">Restart Study</button></div>${troubleshootingMarkup()}${devTestMarkup()}</div>`;
   document.getElementById("export-csv").addEventListener("click", () => downloadCSV(rows, participantFilename("csv")));
   document.getElementById("export-excel").addEventListener("click", () => downloadExcelCompatibleFile(studyState));
-  document.getElementById("export-json").addEventListener("click", () => downloadJSON(studyState));
+  document.getElementById("export-json").addEventListener("click", () => downloadJSON());
   document.getElementById("copy-id").addEventListener("click", copyParticipantId);
   document.getElementById("restart-study").addEventListener("click", restartStudy);
-  bindSubmissionRetry();
-  if (ready && !["sending", "sent"].includes(getOnlineSubmission().status)) submitStudyDataOnline();
+  bindSubmissionActions();
+  document.getElementById("send-test-row")?.addEventListener("click", () => sendTestRowToGoogleSheet());
+  if (ready && !["sending", "sent"].includes(getOnlineSubmission().status)) submitResultsToGoogleSheet();
+}
+
+function troubleshootingMarkup() {
+  const failed = getOnlineSubmission().status === "failed";
+  return `<details class="troubleshooting" id="troubleshooting-panel" ${failed ? "open" : ""}>
+    <summary>Results not appearing in your Google Sheet? Check this list</summary>
+    <ul>
+      <li>Is <code>GOOGLE_SCRIPT_URL</code> in app.js pasted correctly, with no missing quotes or extra spaces?</li>
+      <li>Is the Apps Script deployed as a <strong>Web App</strong> (Deploy → New deployment → Web app)?</li>
+      <li>Is access set to <strong>Anyone</strong>?</li>
+      <li>Did you redeploy (Deploy → Manage deployments → Edit → New version) after the most recent Apps Script edit?</li>
+      <li>Is the destination tab named exactly <strong>Responses</strong>?</li>
+      <li>Open the browser console (F12) — are there errors logged after clicking "Send Results to Google Sheet"?</li>
+    </ul>
+    <p>Full setup instructions: <strong>GOOGLE_SHEETS_SETUP.md</strong>.</p>
+  </details>`;
+}
+
+function devTestMarkup() {
+  return `<details class="dev-test-panel" id="dev-test-panel">
+    <summary>Developer test (safe to remove before real data collection)</summary>
+    <p class="body-copy">Sends a small fixed test payload to verify the Google Sheet connection without using real participant data.</p>
+    <button class="btn" id="send-test-row" type="button">Send Test Row to Google Sheet</button>
+    <p class="copy-status" id="test-row-status" role="status"></p>
+  </details>`;
 }
 
 function renderAvatarIcon(condition, container, sizeClass = "") {
@@ -511,6 +561,11 @@ function getCondition(id) { return CONDITIONS.find(condition => condition.id ===
 function getDeviceInfo() { return { userAgent: navigator.userAgent, screenWidth: window.screen.width, screenHeight: window.screen.height }; }
 function clearTimers() { timers.forEach(clearTimeout); timers = []; }
 
+function saveProgress() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(studyState)); }
+  catch (error) { console.warn("Study progress could not be saved locally.", error); }
+}
+
 function buildFlatDataRows() {
   const blankRow = () => Object.fromEntries(DATA_COLUMNS.map(column => [column, ""]));
   const common = () => ({
@@ -593,52 +648,129 @@ function getOnlineSubmission() {
   return studyState.onlineSubmission;
 }
 
+function isGoogleScriptConfigured() {
+  return typeof GOOGLE_SCRIPT_URL === "string" && GOOGLE_SCRIPT_URL.trim() !== "" && GOOGLE_SCRIPT_URL !== GOOGLE_SCRIPT_PLACEHOLDER;
+}
+
+// Builds the single object the Apps Script web app expects. Shared by the Google Sheet
+// submission and the JSON export so both stay in sync with studyState.
+function buildParticipantDataObject() {
+  return {
+    participantId: studyState.participantId,
+    studyStartTime: studyState.studyStartTime,
+    studyEndTime: studyState.studyEndTime,
+    demographics: studyState.demographics,
+    phaseA: studyState.phaseA,
+    phaseB: studyState.phaseB,
+    finalQuestionnaire: studyState.finalQuestionnaire,
+    deviceInfo: studyState.deviceInfo
+  };
+}
+
 function onlineSubmissionMarkup() {
   const submission = getOnlineSubmission();
-  if (submission.status === "sending") return `<span class="submission-indicator sending" aria-hidden="true"></span><div><strong>Sending responses…</strong><span>Please keep this page open briefly.</span></div>`;
-  if (submission.status === "sent") return `<span class="submission-indicator sent" aria-hidden="true">✓</span><div><strong>Submission sent</strong><span>Your responses were dispatched to the researcher spreadsheet${submission.submittedAt ? ` at ${escapeHTML(new Date(submission.submittedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}` : ""}.${ALLOW_REPEAT_SUBMISSIONS_FOR_TESTING ? " Test mode currently permits repeat submissions." : ""}</span></div>${ALLOW_REPEAT_SUBMISSIONS_FOR_TESTING ? '<button class="btn submission-retry" id="repeat-submission">Send again · Test</button>' : ""}`;
-  if (submission.status === "failed") return `<span class="submission-indicator failed" aria-hidden="true">!</span><div><strong>Automatic submission failed</strong><span>Check your connection, retry, and download a backup file.</span></div><button class="btn submission-retry" id="retry-submission">Retry submission</button>`;
-  return `<span class="submission-indicator" aria-hidden="true">↗</span><div><strong>Preparing submission</strong><span>Your completed responses will be sent automatically.</span></div>`;
+  const sendLabel = submission.status === "sent" ? "Send Results to Google Sheet Again" : "Send Results to Google Sheet";
+  const sendButton = `<button class="btn submission-retry" id="send-to-sheet" type="button">${sendLabel}</button>`;
+  if (!isGoogleScriptConfigured()) {
+    return `<span class="submission-indicator failed" aria-hidden="true">!</span><div><strong>Google Sheet submission is not configured yet.</strong><span>Paste your Apps Script Web App URL into GOOGLE_SCRIPT_URL in app.js, then redeploy. See GOOGLE_SHEETS_SETUP.md.</span></div>`;
+  }
+  if (submission.status === "sending") {
+    return `<span class="submission-indicator sending" aria-hidden="true"></span><div><strong>Sending results...</strong><span>Please keep this page open briefly.</span></div>`;
+  }
+  if (submission.status === "sent") {
+    return `<span class="submission-indicator sent" aria-hidden="true">✓</span><div><strong>Results successfully sent to Google Sheet.</strong><span>Sent${submission.submittedAt ? ` at ${escapeHTML(new Date(submission.submittedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}` : ""}. The browser cannot confirm Google Apps Script wrote the row (no-cors mode) — please verify a new row appears in the "Responses" tab.${ALLOW_REPEAT_SUBMISSIONS_FOR_TESTING ? " Test mode currently permits repeat submissions." : ""}</span></div>${sendButton}`;
+  }
+  if (submission.status === "failed") {
+    return `<span class="submission-indicator failed" aria-hidden="true">!</span><div><strong>Google Sheet submission failed. Please export CSV/JSON as backup.</strong><span>${escapeHTML(submission.error || "Check your connection and the browser console, then retry.")}</span></div>${sendButton}`;
+  }
+  return `<span class="submission-indicator" aria-hidden="true">↗</span><div><strong>Preparing submission</strong><span>Your completed responses will be sent automatically.</span></div>${sendButton}`;
 }
 
 function updateOnlineSubmissionPanel() {
   const panel = document.getElementById("submission-panel");
-  if (!panel) return;
-  panel.innerHTML = onlineSubmissionMarkup();
-  bindSubmissionRetry();
+  if (panel) panel.innerHTML = onlineSubmissionMarkup();
+  const troubleshooting = document.getElementById("troubleshooting-panel");
+  if (troubleshooting) troubleshooting.open = getOnlineSubmission().status === "failed";
+  bindSubmissionActions();
 }
 
-function bindSubmissionRetry() {
-  const retry = document.getElementById("retry-submission");
-  if (retry) retry.addEventListener("click", () => submitStudyDataOnline());
-  const repeat = document.getElementById("repeat-submission");
-  if (repeat) repeat.addEventListener("click", () => submitStudyDataOnline(true));
+function bindSubmissionActions() {
+  const sendButton = document.getElementById("send-to-sheet");
+  if (sendButton) sendButton.addEventListener("click", () => submitResultsToGoogleSheet(true));
 }
 
-async function submitStudyDataOnline(forceRepeat = false) {
+async function submitResultsToGoogleSheet(forceRepeat = false) {
   if (!isExportReady() || !studyState.consent || studyState.consentVersion !== CURRENT_CONSENT_VERSION) return;
+  if (!isGoogleScriptConfigured()) {
+    console.error("Google Sheet submission skipped: GOOGLE_SCRIPT_URL is missing or still the placeholder value. Paste your Apps Script Web App URL into app.js.");
+    studyState.onlineSubmission = { status: "not_configured", submittedAt: "", error: "GOOGLE_SCRIPT_URL is not configured." };
+    saveProgress();
+    updateOnlineSubmissionPanel();
+    return;
+  }
   const submission = getOnlineSubmission();
   if (submission.status === "sending") return;
-  if (submission.status === "sent" && !(forceRepeat && ALLOW_REPEAT_SUBMISSIONS_FOR_TESTING)) return;
+  if (submission.status === "sent" && !forceRepeat) return;
   studyState.onlineSubmission = { status: "sending", submittedAt: "", error: "" };
+  saveProgress();
   updateOnlineSubmissionPanel();
+  // The temporary test key lets the same participant resend during development without
+  // colliding with a prior row. Code.gs expects { participantId, columns, rows }.
+  const submissionId = forceRepeat || ALLOW_REPEAT_SUBMISSIONS_FOR_TESTING ? `${studyState.participantId}-${Date.now()}` : studyState.participantId;
+  const payload = { participantId: submissionId, columns: DATA_COLUMNS, rows: buildFlatDataRows() };
+  console.log("Submitting study data to Google Sheet:", payload);
   try {
-    // The temporary test key bypasses server deduplication while exported row IDs remain unchanged.
-    const submissionKey = ALLOW_REPEAT_SUBMISSIONS_FOR_TESTING ? `${studyState.participantId}-TEST-${Date.now()}` : studyState.participantId;
-    const payload = { participantId: submissionKey, columns: DATA_COLUMNS, rows: buildFlatDataRows() };
-    await fetch(GOOGLE_APPS_SCRIPT_URL, {
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       mode: "no-cors",
       cache: "no-store",
       keepalive: true,
-      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload)
     });
+    // mode:"no-cors" makes the response opaque (status is always 0, body unreadable).
+    // No thrown error here only means the request reached the network; verify the sheet manually.
+    console.log("Google Sheet response:", response, "(opaque response under no-cors — verify the Responses tab manually)");
     studyState.onlineSubmission = { status: "sent", submittedAt: new Date().toISOString(), error: "" };
   } catch (error) {
+    console.error("Google Sheet submission failed:", error);
     studyState.onlineSubmission = { status: "failed", submittedAt: "", error: String(error?.message || "Network request failed") };
   }
+  saveProgress();
   updateOnlineSubmissionPanel();
+}
+
+async function sendTestRowToGoogleSheet() {
+  const statusEl = document.getElementById("test-row-status");
+  if (!isGoogleScriptConfigured()) {
+    console.error("Google Sheet submission skipped: GOOGLE_SCRIPT_URL is missing or still the placeholder value.");
+    if (statusEl) statusEl.textContent = "Google Sheet submission is not configured yet.";
+    return;
+  }
+  const testId = `TEST-${Date.now()}`;
+  const blankRow = Object.fromEntries(DATA_COLUMNS.map(column => [column, ""]));
+  const payload = {
+    participantId: testId,
+    columns: DATA_COLUMNS,
+    rows: [{ ...blankRow, participant_id: testId, record_type: "test", timestamp: new Date().toISOString() }]
+  };
+  console.log("Submitting study data to Google Sheet:", payload);
+  if (statusEl) statusEl.textContent = "Sending test row...";
+  try {
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      cache: "no-store",
+      keepalive: true,
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+    console.log("Google Sheet response:", response, "(opaque response under no-cors — verify the Responses tab manually)");
+    if (statusEl) statusEl.textContent = "Test row sent. Check the Responses tab in your Google Sheet.";
+  } catch (error) {
+    console.error("Google Sheet submission failed:", error);
+    if (statusEl) statusEl.textContent = `Test row failed: ${error?.message || "network error"}.`;
+  }
 }
 
 function downloadCSV(rows, filename) {
@@ -658,18 +790,8 @@ function downloadExcelCompatibleFile(state) {
   downloadFile(participantFilename("xls"), `\uFEFF${html}`, "application/vnd.ms-excel;charset=utf-8");
 }
 
-function downloadJSON(state) {
-  const data = {
-    participantId: state.participantId,
-    studyStartTime: state.studyStartTime,
-    studyEndTime: state.studyEndTime,
-    demographics: state.demographics,
-    phaseA: state.phaseA,
-    phaseB: state.phaseB,
-    finalQuestionnaire: state.finalQuestionnaire,
-    deviceInfo: state.deviceInfo
-  };
-  downloadFile(participantFilename("json"), JSON.stringify(data, null, 2), "application/json;charset=utf-8");
+function downloadJSON() {
+  downloadFile(participantFilename("json"), JSON.stringify(buildParticipantDataObject(), null, 2), "application/json;charset=utf-8");
 }
 
 function escapeCSVValue(value) {
@@ -700,8 +822,9 @@ function downloadFile(filename, content, type) {
 }
 
 function restartStudy() {
-  if (!window.confirm("Restart the study? This will permanently clear all responses on this device.")) return;
+  if (!window.confirm("Restart the study? This will permanently clear all saved responses on this device.")) return;
   clearTimers();
+  localStorage.removeItem(STORAGE_KEY);
   studyState = createInitialState();
   document.getElementById("participant-chip").hidden = true;
   renderPage();
@@ -712,3 +835,4 @@ function escapeHTML(value) {
 }
 
 document.addEventListener("DOMContentLoaded", initStudy);
+
