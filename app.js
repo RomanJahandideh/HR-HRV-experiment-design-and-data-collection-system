@@ -17,12 +17,6 @@ const HRV_STATES = {
 
 const CONDITIONS = buildConditions();
 const PHASE_A_CONDITIONS = ["H1_V1", "H2_V2", "H3_V3", "H4_V4"];
-const ECG_PATHS = {
-  H1: "M8 40 L40 40 L48 35 L56 47 L66 27 L76 51 L86 37 L94 40 L152 40",
-  H2: "M8 40 L36 40 L45 30 L54 50 L65 20 L77 57 L88 33 L98 40 L152 40",
-  H3: "M8 40 L32 40 L43 25 L53 53 L65 13 L78 63 L90 28 L101 40 L152 40",
-  H4: "M8 40 L28 40 L40 20 L51 57 L65 7 L79 68 L92 22 L104 43 L114 31 L122 40 L152 40"
-};
 const DATA_COLUMNS = [
   "participant_id", "study_start_time", "study_end_time", "timestamp", "record_type", "phase", "trial_number", "condition_id", "hr_state", "hrv_state", "randomized_order", "stimulus_start_time", "response_start_time", "response_submit_time", "response_time_ms",
   "age_range", "gaming_experience", "wearable_experience", "hr_hrv_familiarity", "visual_accessibility", "device_type",
@@ -233,7 +227,7 @@ function startPhaseA() {
 function renderTrainingPage() {
   const examples = ["H1_V1", "H2_V2", "H3_V3", "H4_V4"];
   const labels = ["Low activation / high coherence", "Focused activation / stable variability", "High activation / reduced variability", "Overdrive activation / fragmented variability"];
-  app.innerHTML = `<div class="page"><p class="eyebrow">Training · Visual legend</p><h2>How to read the icon</h2><p class="body-copy">The icon combines two simulated interface dimensions. It does not diagnose emotion or display real health data.</p><div class="mapping-grid"><section class="mapping"><h3>Activation cues</h3><ul><li>Faster pulse = higher simulated HR activation.</li><li>Stronger glow = higher simulated HR activation.</li><li>Larger halo expansion = higher simulated HR activation.</li></ul></section><section class="mapping"><h3>Stability cues</h3><ul><li>Smoother ring = higher simulated HRV coherence.</li><li>Dotted or segmented ring = moderate HRV change.</li><li>Broken or jittering ring = lower simulated HRV stability.</li></ul></section></div><div class="legend-grid">${examples.map((id, i) => `<div class="legend-card"><div data-avatar="${id}"></div><p>${labels[i]}</p></div>`).join("")}</div><p class="notice">Treat the icon as ambient teammate-status information in a cooperative game—not as a medical indicator or emotional diagnosis.</p><div class="page-actions"><button class="btn btn-primary" id="training-next">Start Phase B <span class="arrow" aria-hidden="true">→</span></button></div></div>`;
+  app.innerHTML = `<div class="page"><p class="eyebrow">Training · Visual legend</p><h2>How to read the icon</h2><p class="body-copy">The icon combines two simulated interface dimensions. It does not diagnose emotion or display real health data.</p><div class="mapping-grid"><section class="mapping"><h3>Activation cues</h3><ul><li>Faster pulse and spin = higher simulated HR activation.</li><li>Hotter, brighter glow = higher simulated HR activation.</li><li>Larger bloom halo = higher simulated HR activation.</li></ul></section><section class="mapping"><h3>Stability cues</h3><ul><li>A smooth, even ring = higher simulated HRV coherence.</li><li>Slightly irregular segments = moderate HRV change.</li><li>Fragmented, flickering segments = lower simulated HRV stability.</li></ul></section></div><div class="legend-grid">${examples.map((id, i) => `<div class="legend-card"><div data-avatar="${id}"></div><p>${labels[i]}</p></div>`).join("")}</div><p class="notice">Treat the icon as ambient teammate-status information in a cooperative game—not as a medical indicator or emotional diagnosis.</p><div class="page-actions"><button class="btn btn-primary" id="training-next">Start Phase B <span class="arrow" aria-hidden="true">→</span></button></div></div>`;
   examples.forEach(id => renderAvatarIcon(getCondition(id), document.querySelector(`[data-avatar="${id}"]`), "mini"));
   document.getElementById("training-next").addEventListener("click", () => setPage("phaseBIntro"));
 }
@@ -460,57 +454,115 @@ function devTestMarkup() {
   </details>`;
 }
 
+// The icon is an "ember dial": a wedge-segmented ring with a directional hot glow (HR = brightness,
+// bloom size, pulse/spin speed) and wedge regularity (HRV = segment count, gap jitter, dropout,
+// flicker). Hue is fixed (pure red) across all 16 conditions; only lightness/blur/motion change.
+const DIAL_WEDGE_COUNT = { V1: 1, V2: 14, V3: 19, V4: 25 };
+const DIAL_HOT_FALLOFF_DEG = { H1: 150, H2: 118, H3: 92, H4: 68 };
+const DIAL_HOT_ANGLE = 20;
+const DIAL_OUTER_R = 92;
+const DIAL_INNER_R = 63;
+
 function renderAvatarIcon(condition, container, sizeClass = "") {
-  const hrv = condition.hrvState;
-  const structureClass = hrv.ringType === "smooth" ? "smooth" : `${hrv.ringType} segmented`;
-  container.innerHTML = `<div class="signal-core ${structureClass} ${sizeClass}" role="img" aria-label="Animated simulated teammate status signal"><div class="core-glow"></div><div class="outer-ring"></div><div class="middle-ring"></div><div class="inner-ring"></div><div class="ring-segments"></div><div class="orbit-nodes"></div><svg class="ecg-waveform" viewBox="0 0 160 80" aria-hidden="true"><path class="ecg-baseline" d="M8 40 H152"></path><path class="ecg-line" d="${ECG_PATHS[condition.hr]}"></path></svg></div>`;
+  const stateClass = `hr-${condition.hr.toLowerCase()} hrv-${condition.hrv.toLowerCase()}`;
+  container.innerHTML = `<div class="signal-core ${stateClass} ${sizeClass}" role="img" aria-label="Animated simulated teammate status signal"><div class="core-bloom"></div><svg class="core-dial" viewBox="0 0 200 200" aria-hidden="true"><g class="dial-rotor"><g class="dial-glow"></g><g class="dial-sharp"></g></g></svg><div class="dial-center"></div></div>`;
   const signalCore = container.firstElementChild;
-  applyConditionStyles(condition, signalCore);
-  const radius = sizeClass.includes("mini") ? 49 : sizeClass.includes("small") ? 66 : 116;
-  generateRingSegments(hrv, signalCore.querySelector(".ring-segments"), radius);
-  generateOrbitNodes(hrv, signalCore.querySelector(".orbit-nodes"));
+  applyConditionStyles(condition, signalCore, sizeClass);
+  buildDialWedges(condition, signalCore);
 }
 
-function applyConditionStyles(condition, signalCore) {
+function applyConditionStyles(condition, signalCore, sizeClass = "") {
   const hr = condition.hrState;
   const hrv = condition.hrvState;
-  const ecgEnergy = { H1: 0.78, H2: 0.94, H3: 1.10, H4: 1.24 }[condition.hr];
+  const hrNorm = (hr.brightness - 0.65) / (1.25 - 0.65);
+  // Bloom blur is defined in SVG user units (the 200x200 viewBox), which scales down with the
+  // icon's rendered size automatically -- except CSS filter:blur() radius is in real px and does
+  // NOT scale with viewBox, so it must be scaled down explicitly for mini/small icons or the glow
+  // over-blurs into invisibility at 112px.
+  const sizeScale = sizeClass.includes("mini") ? 112 / 260 : sizeClass.includes("small") ? 150 / 260 : 1;
   signalCore.style.setProperty("--pulse-duration", `${hr.pulseDuration}ms`);
+  signalCore.style.setProperty("--rotation-duration", `${Math.round(hr.pulseDuration * 4)}ms`);
   signalCore.style.setProperty("--glow-strength", hr.glowStrength);
   signalCore.style.setProperty("--halo-scale", hr.haloScale);
   signalCore.style.setProperty("--brightness", hr.brightness);
+  signalCore.style.setProperty("--peak-lightness", `${Math.round(38 + hrNorm * 27)}%`);
+  signalCore.style.setProperty("--blur-amount", `${((3 + hr.glowStrength * 7) * sizeScale).toFixed(1)}px`);
   signalCore.style.setProperty("--jitter-amount", hrv.jitterAmount);
-  signalCore.style.setProperty("--wobble-duration", `${hrv.wobbleDuration || 999999}ms`);
-  signalCore.style.setProperty("--segment-opacity", Math.max(.4, 1 - hrv.opacityIrregularity));
-  signalCore.style.setProperty("--ecg-energy", ecgEnergy);
+  signalCore.style.setProperty("--wobble-duration", `${hrv.wobbleDuration || 20000}ms`);
+  signalCore.style.setProperty("--wobble-amplitude", `${(hrv.jitterAmount * 1.1).toFixed(2)}deg`);
+  signalCore.style.setProperty("--segment-opacity", Math.max(.35, 1 - hrv.opacityIrregularity));
 }
 
-function generateRingSegments(hrvState, ring, radius) {
-  if (hrvState.ringType === "smooth") return;
-  for (let i = 0; i < hrvState.segments; i += 1) {
-    const segment = document.createElement("i");
-    segment.className = "signal-segment";
-    const angle = (360 / hrvState.segments) * i;
-    const deterministic = ((i * 37 + hrvState.segments * 11) % 100) / 100;
-    const hidden = deterministic < hrvState.fragmentation;
-    const opacityShift = (((i * 23) % 100) / 100) * hrvState.opacityIrregularity;
-    const radialJitter = (((i * 17) % 9) - 4) * hrvState.jitterAmount * 0.12;
-    segment.style.transform = `rotate(${angle}deg) translateY(-${radius + radialJitter}px)`;
-    segment.style.opacity = hidden ? "0" : String(Math.max(.15, 1 - opacityShift));
-    if (hrvState.ringType === "broken") segment.style.height = `${5 + (i * 7) % 8}px`;
-    ring.appendChild(segment);
+function polarPoint(cx, cy, r, angleDeg) {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function describeWedge(cx, cy, rOuter, rInner, startAngle, endAngle) {
+  const p1 = polarPoint(cx, cy, rOuter, startAngle);
+  const p2 = polarPoint(cx, cy, rOuter, endAngle);
+  const p3 = polarPoint(cx, cy, rInner, endAngle);
+  const p4 = polarPoint(cx, cy, rInner, startAngle);
+  const largeArc = Math.abs(endAngle - startAngle) > 180 ? 1 : 0;
+  return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)} L ${p3.x.toFixed(2)} ${p3.y.toFixed(2)} A ${rInner} ${rInner} 0 ${largeArc} 0 ${p4.x.toFixed(2)} ${p4.y.toFixed(2)} Z`;
+}
+
+function angularDistance(a, b) {
+  const d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
+}
+
+function wedgeBrightness(angle, falloffDeg, hrvState, index) {
+  const normalized = angularDistance(angle, DIAL_HOT_ANGLE) / falloffDeg;
+  let brightness = Math.pow(Math.max(0, 1 - normalized), 1.4);
+  const noise = (((index * 23) % 100) / 100) * hrvState.opacityIrregularity;
+  brightness *= 1 - noise;
+  return Math.min(1, Math.max(0.03, brightness));
+}
+
+function appendWedge(group, pathData, brightness, flicker, index) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  el.setAttribute("d", pathData);
+  el.style.fill = `hsl(356 82% calc(6% + (var(--peak-lightness) - 6%) * ${brightness.toFixed(3)}))`;
+  if (flicker) {
+    el.classList.add("wedge-flicker");
+    el.style.setProperty("--flicker-delay", `${(index % 5) * 0.18}s`);
   }
+  group.appendChild(el);
 }
 
-function generateOrbitNodes(hrvState, orbit) {
-  const nodeCount = { smooth: 2, dotted: 3, segmented: 4, broken: 5 }[hrvState.ringType];
-  for (let i = 0; i < nodeCount; i += 1) {
-    const node = document.createElement("i");
-    node.className = "orbit-node";
-    const irregularOffset = hrvState.jitterAmount ? ((i * 13) % 9 - 4) * hrvState.jitterAmount * .35 : 0;
-    node.style.setProperty("--node-angle", `${(360 / nodeCount) * i + 28 + irregularOffset}deg`);
-    node.style.opacity = String(Math.max(.25, 1 - (((i * 31) % 10) / 10) * hrvState.opacityIrregularity));
-    orbit.appendChild(node);
+function buildDialWedges(condition, signalCore) {
+  const hrv = condition.hrvState;
+  const glowGroup = signalCore.querySelector(".dial-glow");
+  const sharpGroup = signalCore.querySelector(".dial-sharp");
+  const count = DIAL_WEDGE_COUNT[condition.hrv];
+  const falloff = DIAL_HOT_FALLOFF_DEG[condition.hr];
+
+  if (count === 1) {
+    const path = describeWedge(100, 100, DIAL_OUTER_R, DIAL_INNER_R, 0, 359.99);
+    const brightness = wedgeBrightness(DIAL_HOT_ANGLE, falloff, hrv, 0);
+    appendWedge(sharpGroup, path, brightness, false, 0);
+    appendWedge(glowGroup, path, brightness, false, 0);
+    return;
+  }
+
+  const step = 360 / count;
+  const gapDeg = 2.4 + hrv.jitterAmount * 0.6;
+  const hotIndex = Math.round(DIAL_HOT_ANGLE / step) % count;
+  for (let i = 0; i < count; i += 1) {
+    const center = step * i;
+    const deterministic = ((i * 37 + count * 11) % 100) / 100;
+    // Even a suppressed/fragmented HRV reading still shows some signal near the current hot
+    // angle, so HR activation stays legible instead of the same near-hot wedges dropping every time.
+    if (i !== hotIndex && deterministic < hrv.fragmentation) continue;
+    const wobbleOffset = ((i * 17) % 9 - 4) * hrv.jitterAmount * 0.35;
+    const start = center - step / 2 + gapDeg / 2 + wobbleOffset;
+    const end = center + step / 2 - gapDeg / 2 + wobbleOffset;
+    const brightness = wedgeBrightness(center, falloff, hrv, i);
+    const flicker = hrv.opacityIrregularity > 0.2 && i % 5 === 0;
+    const path = describeWedge(100, 100, DIAL_OUTER_R, DIAL_INNER_R, start, end);
+    appendWedge(sharpGroup, path, brightness, flicker, i);
+    appendWedge(glowGroup, path, brightness, flicker, i);
   }
 }
 
