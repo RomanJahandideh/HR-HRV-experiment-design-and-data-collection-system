@@ -32,7 +32,7 @@ const DATA_COLUMNS = [
   "user_agent", "screen_width", "screen_height"
 ];
 const STORAGE_KEY = "sbiv-study-state-v1";
-// Paste the Apps Script Web App "exec" URL here. See GOOGLE_SHEETS_SETUP.md for full setup steps.
+// Paste the Apps Script Web App "exec" URL here. See google-apps-script/README.md for full setup steps.
 // IMPORTANT: every time the Apps Script project is edited, it must be redeployed (Deploy > Manage deployments > Edit > New version)
 // or this URL keeps running the old code.
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxc4aRVR4C7JcPxaNC8PQo33gx0RZKsXBNCI5xKkThgACZZ_AR98Hk-mO_jLKUq6Zvh2w/exec";
@@ -447,7 +447,7 @@ function troubleshootingMarkup() {
       <li>Is the destination tab named exactly <strong>Responses</strong>?</li>
       <li>Open the browser console (F12) — are there errors logged after clicking "Send Results to Google Sheet"?</li>
     </ul>
-    <p>Full setup instructions: <strong>GOOGLE_SHEETS_SETUP.md</strong>.</p>
+    <p>Full setup instructions: <strong>google-apps-script/README.md</strong>.</p>
   </details>`;
 }
 
@@ -672,7 +672,7 @@ function onlineSubmissionMarkup() {
   const sendLabel = submission.status === "sent" ? "Send Results to Google Sheet Again" : "Send Results to Google Sheet";
   const sendButton = `<button class="btn submission-retry" id="send-to-sheet" type="button">${sendLabel}</button>`;
   if (!isGoogleScriptConfigured()) {
-    return `<span class="submission-indicator failed" aria-hidden="true">!</span><div><strong>Google Sheet submission is not configured yet.</strong><span>Paste your Apps Script Web App URL into GOOGLE_SCRIPT_URL in app.js, then redeploy. See GOOGLE_SHEETS_SETUP.md.</span></div>`;
+    return `<span class="submission-indicator failed" aria-hidden="true">!</span><div><strong>Google Sheet submission is not configured yet.</strong><span>Paste your Apps Script Web App URL into GOOGLE_SCRIPT_URL in app.js, then redeploy. See google-apps-script/README.md.</span></div>`;
   }
   if (submission.status === "sending") {
     return `<span class="submission-indicator sending" aria-hidden="true"></span><div><strong>Sending results...</strong><span>Please keep this page open briefly.</span></div>`;
