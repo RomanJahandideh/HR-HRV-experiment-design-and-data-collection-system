@@ -141,6 +141,7 @@ textarea:focus-visible { border-color: var(--accent); }
 .question-form h2 { font-size: 1.5rem; }
 
 .signal-core {
+  --dial-hue: 34;
   --pulse-duration: 1250ms;
   --rotation-duration: 5000ms;
   --glow-strength: .45;
@@ -165,7 +166,7 @@ textarea:focus-visible { border-color: var(--accent); }
 .signal-core.mini { --core-size: 112px; }
 .core-bloom {
   position: absolute; inset: -16%; z-index: -1; border-radius: 50%; pointer-events: none;
-  background: radial-gradient(circle at 58% 46%, hsla(356, 92%, 52%, calc(var(--glow-strength) * .34)) 0%, transparent 62%);
+  background: radial-gradient(circle at 58% 46%, hsla(var(--dial-hue), 92%, 52%, calc(var(--glow-strength) * .34)) 0%, transparent 62%);
   filter: blur(calc(var(--core-size) * .077));
   animation: bloomBreath var(--pulse-duration) ease-in-out infinite;
 }
@@ -175,16 +176,23 @@ textarea:focus-visible { border-color: var(--accent); }
   animation: dialSweep var(--rotation-duration) linear infinite, dialWobble var(--wobble-duration) ease-in-out infinite;
 }
 .dial-glow { filter: blur(var(--blur-amount)); opacity: .85; }
-.dial-sharp { opacity: var(--segment-opacity); }
+.dial-sharp { opacity: var(--segment-opacity); animation: ambientGrain 2.6s ease-in-out infinite; }
 .wedge-flicker { animation: opacityFlicker 1.1s steps(4, end) infinite; animation-delay: var(--flicker-delay, 0s); }
 .dial-center {
   position: absolute; top: 50%; left: 50%; z-index: 2;
-  width: 17%; height: 17%; transform: translate(-50%, -50%);
-  background: #050303;
-  box-shadow: 0 0 calc(10px * var(--glow-strength)) hsla(356, 90%, 45%, .55), inset 0 0 4px rgba(0, 0, 0, .85);
+  width: 15%; height: 15%; transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 42% 38%,
+    hsl(var(--dial-hue) 100% calc(var(--peak-lightness) + 22%)) 0%,
+    hsl(var(--dial-hue) 94% var(--peak-lightness)) 55%,
+    hsl(var(--dial-hue) 88% calc(var(--peak-lightness) - 14%)) 100%);
+  box-shadow:
+    0 0 calc(26px * var(--glow-strength)) hsla(var(--dial-hue), 95%, 58%, .95),
+    0 0 calc(10px * var(--glow-strength)) hsla(var(--dial-hue), 100%, 75%, .9),
+    inset 0 0 3px rgba(255, 255, 255, .4);
   pointer-events: none;
 }
-.signal-core.paused .dial-rotor, .signal-core.paused .core-bloom, .signal-core.paused .wedge-flicker { animation-play-state: paused !important; }
+.signal-core.paused .dial-rotor, .signal-core.paused .core-bloom, .signal-core.paused .wedge-flicker, .signal-core.paused .dial-sharp { animation-play-state: paused !important; }
 .legend-card .signal-core { transition: transform .25s ease, filter .25s ease; }
 .legend-card:hover .signal-core { transform: translateY(-3px) scale(1.04); filter: brightness(1.08); }
 
@@ -193,6 +201,10 @@ textarea:focus-visible { border-color: var(--accent); }
 @keyframes dialSweep { to { transform: rotate(360deg); } }
 @keyframes dialWobble { 0%, 100% { rotate: 0deg; } 50% { rotate: var(--wobble-amplitude); } }
 @keyframes opacityFlicker { 0%, 100% { opacity: 1; } 22% { opacity: .72; } 48% { opacity: .2; } 73% { opacity: .58; } }
+/* A faint shimmer present at every HR/HRV condition, including the calmest one, so a "clean" reading
+   never looks like a flawless, fully-resolved signal next to fragmented ones -- the apparatus always
+   has some irreducible noise, it's just smaller in magnitude for high-coherence conditions. */
+@keyframes ambientGrain { 0%, 100% { opacity: var(--segment-opacity); } 50% { opacity: calc(var(--segment-opacity) * .94); } }
 
 .legend-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .9rem; margin: 1.5rem 0; }
 .legend-card { display: grid; justify-items: center; padding: .9rem .6rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); text-align: center; box-shadow: var(--shadow-sm); }

@@ -456,7 +456,10 @@ function devTestMarkup() {
 
 // The icon is an "ember dial": a wedge-segmented ring with a directional hot glow (HR = brightness,
 // bloom size, pulse/spin speed) and wedge regularity (HRV = segment count, gap jitter, dropout,
-// flicker). Hue is fixed (pure red) across all 16 conditions; only lightness/blur/motion change.
+// flicker). Hue is fixed (amber ember, not alarm-red) across all 16 conditions; only lightness/blur/motion
+// change -- red was avoided because it reads as a fixed alarm/malfunction signal regardless of state,
+// which contradicts treating every condition as an ambiguous, non-diagnostic cue rather than a verdict.
+const DIAL_HUE = 34;
 const DIAL_WEDGE_COUNT = { V1: 1, V2: 14, V3: 19, V4: 25 };
 const DIAL_HOT_FALLOFF_DEG = { H1: 150, H2: 118, H3: 92, H4: 68 };
 const DIAL_HOT_ANGLE = 20;
@@ -480,6 +483,7 @@ function applyConditionStyles(condition, signalCore, sizeClass = "") {
   // NOT scale with viewBox, so it must be scaled down explicitly for mini/small icons or the glow
   // over-blurs into invisibility at 112px.
   const sizeScale = sizeClass.includes("mini") ? 112 / 260 : sizeClass.includes("small") ? 150 / 260 : 1;
+  signalCore.style.setProperty("--dial-hue", DIAL_HUE);
   signalCore.style.setProperty("--pulse-duration", `${hr.pulseDuration}ms`);
   signalCore.style.setProperty("--rotation-duration", `${Math.round(hr.pulseDuration * 4)}ms`);
   signalCore.style.setProperty("--glow-strength", hr.glowStrength);
@@ -523,7 +527,7 @@ function wedgeBrightness(angle, falloffDeg, hrvState, index) {
 function appendWedge(group, pathData, brightness, flicker, index) {
   const el = document.createElementNS("http://www.w3.org/2000/svg", "path");
   el.setAttribute("d", pathData);
-  el.style.fill = `hsl(356 82% calc(6% + (var(--peak-lightness) - 6%) * ${brightness.toFixed(3)}))`;
+  el.style.fill = `hsl(${DIAL_HUE} 82% calc(6% + (var(--peak-lightness) - 6%) * ${brightness.toFixed(3)}))`;
   if (flicker) {
     el.classList.add("wedge-flicker");
     el.style.setProperty("--flicker-delay", `${(index % 5) * 0.18}s`);
